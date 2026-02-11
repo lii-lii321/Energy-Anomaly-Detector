@@ -28,7 +28,7 @@ Energy-Anomaly-Detection/
 │   ├── main.py         # FastAPI 后端推理服务
 │   └── app_ui.py       # Streamlit 前端交互界面
 └── requirements.txt    # 项目依赖
-
+```
 ## 📊 系统演示 (System Demo)
 
 ### 1. 3D 概率曲面分析
