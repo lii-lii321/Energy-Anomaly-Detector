@@ -34,9 +34,9 @@ Energy-Anomaly-Detection/
 ### 1. 3D 概率曲面分析
 下图展示了多元高斯模型对正常数据（蓝色点）与异常数据（红色点）的区分能力。正常数据聚集在高概率密度“山峰”区域，而异常点落在低概率平原。
 
-![3D Probability Surface](assets/3d_plot.png)
+![3D图](assets/3d_plot.png)
 
 ### 2. 实时监测仪表盘
 基于 Streamlit 构建的交互式前端，当检测到“压力降低且电流激增”的逻辑冲突时，系统会立即触发红色警报。
 
-![Streamlit Dashboard Alert](assets/dashboard_alert.png)
+![仪表盘](assets/dashboard_alert.png)
