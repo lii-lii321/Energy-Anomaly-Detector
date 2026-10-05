@@ -22,6 +22,7 @@ try:
         model_params = pickle.load(f)
     mu = model_params["mu"]
     sigma = model_params["sigma"]
+    epsilon = model_params.get("epsilon", 1e-5)
     print(f"✅ 成功加载模型：{os.path.abspath(model_path)}")
 except FileNotFoundError:
     print(

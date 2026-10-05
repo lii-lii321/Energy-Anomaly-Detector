@@ -1,53 +1,82 @@
 import os
+import pickle
+from datetime import datetime, timezone
+from pathlib import Path
+
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
 from mpl_toolkits.mplot3d import Axes3D
-import pickle
-import matplotlib
+from scipy.stats import multivariate_normal
 
-# --- 关键修改：启用交互式后端 ---
-try:
-    matplotlib.use("Qt5Agg")
-except:
-    pass
+from model_paths import MODELS_DIR, resolve_model_path
+from threshold import find_best_threshold
 
-from model_paths import resolve_model_path
+# 支持通过环境变量 ENERGY_MODEL_PATH 指定 models/ 目录内的输出文件名，越界路径会被拒绝
+RANDOM_SEED = 42
+NORMAL_SAMPLES = 200
+NORMAL_MEAN = [2.1, 15.0]
+NORMAL_COV = [[0.01, 0.008], [0.008, 0.1]]
+INJECTED_ANOMALY = [1.7, 18.0]
+FEATURE_COLUMNS = ["pressure", "current"]
 
-# --- 核心修复：自动获取绝对路径，不再依赖运行位置 ---
-# 支持通过环境变量 ENERGY_MODEL_PATH 传入输出路径，越出 models/ 目录的路径会被拒绝
-model_path = resolve_model_path(os.environ.get("ENERGY_MODEL_PATH"))
 
-# 1. 模拟数据
-np.random.seed(42)
-n_samples = 200
-mean_val = [2.1, 15.0]
-cov_val = [[0.01, 0.008], [0.008, 0.1]]
-normal_data = np.random.multivariate_normal(mean_val, cov_val, n_samples)
-anomaly_data = np.array([[1.7, 18.0]])
-all_data = np.vstack([normal_data, anomaly_data])
-df_2d = pd.DataFrame(all_data, columns=["pressure", "current"])
+def build_labeled_samples():
+    np.random.seed(RANDOM_SEED)
+    normal_data = np.random.multivariate_normal(
+        NORMAL_MEAN, NORMAL_COV, NORMAL_SAMPLES
+    )
+    features = np.vstack([normal_data, np.array([INJECTED_ANOMALY])])
+    labels = np.array([0] * NORMAL_SAMPLES + [1])
+    return features, labels
 
-# 2. 计算参数
-mu_2d = df_2d.mean().values
-sigma_2d = np.cov(df_2d.values, rowvar=False)
 
-# 3. 保存模型 (使用修复后的路径)
-model_data = {"mu": mu_2d, "sigma": sigma_2d}
+def train(model_path=None):
+    requested = (
+        model_path if model_path is not None else os.environ.get("ENERGY_MODEL_PATH")
+    )
+    resolved = Path(resolve_model_path(requested)).resolve()
+    filename = resolved.name
+    if ".." in filename or os.sep in filename:
+        raise ValueError(f"invalid model file name: {filename}")
+    models_root = Path(MODELS_DIR).resolve()
+    model_path = models_root / filename
+    if model_path.parent != models_root:
+        raise ValueError(f"model path must stay inside {MODELS_DIR}")
 
-# 确保父目录存在
-os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    features, labels = build_labeled_samples()
+    df_2d = pd.DataFrame(features, columns=FEATURE_COLUMNS)
+    mu_2d = df_2d.mean().values
+    sigma_2d = np.cov(df_2d.values, rowvar=False)
 
-with open(model_path, "wb") as f:
-    pickle.dump(model_data, f)
-print(f"✅ 模型已成功保存至: {os.path.abspath(model_path)}")
+    probabilities = multivariate_normal.pdf(features, mean=mu_2d, cov=sigma_2d)
+    epsilon, best_f1 = find_best_threshold(labels, probabilities)
 
-# 4. 绘图 (这部分保持不变)
-p_val_2d = multivariate_normal.pdf(df_2d.values, mean=mu_2d, cov=sigma_2d)
-df_2d["probability"] = p_val_2d
-epsilon = 1e-5
-df_2d["is_anomaly"] = df_2d["probability"] < epsilon
+    model_data = {
+        "mu": mu_2d,
+        "sigma": sigma_2d,
+        "epsilon": epsilon,
+        "n_samples": len(labels),
+        "threshold_method": "f1",
+        "trained_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model_path.write_bytes(pickle.dumps(model_data))
+    print(f"✅ 模型已成功保存至: {model_path}")
+    print(f"✅ F1 自动选阈值: epsilon={epsilon:.6g}, f1={best_f1:.3f}, n={len(labels)}")
+    return model_data
+
+
+def score_labeled_samples(model_data):
+    features, _ = build_labeled_samples()
+    df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
+    df["probability"] = multivariate_normal.pdf(
+        features, mean=model_data["mu"], cov=model_data["sigma"]
+    )
+    df["is_anomaly"] = df["probability"] < model_data["epsilon"]
+    return df
 
 
 def plot_3d_anomaly(df, mu, sigma):
@@ -78,6 +107,10 @@ def plot_3d_anomaly(df, mu, sigma):
     plt.show()
 
 
-# 如果直接运行此脚本，则绘图
 if __name__ == "__main__":
-    plot_3d_anomaly(df_2d, mu_2d, sigma_2d)
+    try:
+        matplotlib.use("Qt5Agg")
+    except Exception:
+        pass
+    trained = train()
+    plot_3d_anomaly(score_labeled_samples(trained), trained["mu"], trained["sigma"])

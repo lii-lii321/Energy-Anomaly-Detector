@@ -7,7 +7,7 @@
 
 ## 🌟 核心亮点 (Key Features)
 - **跨维度逻辑检测**：利用 **协方差矩阵 (Covariance Matrix)** 建模特征耦合关系，精准识别违反物理逻辑的隐蔽故障。
-- **阈值判定工具**：提供基于 **F1-Score** 的阈值搜索工具函数 `find_best_threshold`（见 `src/threshold.py`）；训练产物当前使用固定概率阈值 ε=1e-5，自动寻优尚未接入训练流程。
+- **阈值自动寻优**：训练时在标注样本（200 条正常 + 1 条注入异常）上基于 **F1-Score** 自动搜索最优概率阈值 ε（`src/threshold.py` 的 `find_best_threshold`），并把 ε 作为模型元数据写入 `models/energy_model.pkl`；推理服务优先读取元数据中的 ε，旧模型文件自动回退默认 1e-5。
 - **全栈工程架构**：
   - **算法层**：Python + SciPy 实现多元高斯建模与模型持久化。
   - **服务层**：基于 **FastAPI** 封装异步推理接口，支持高并发数据流处理。
@@ -49,7 +49,7 @@ pip install -r requirements.txt
 ```bash
 python src/train.py
 ```
-脚本会先把多元高斯模型保存到 `models/energy_model.pkl`，随后弹出 3D 概率曲面窗口（蓝色为正常点、红色为异常点）；关闭窗口后脚本即结束。可通过环境变量 `ENERGY_MODEL_PATH` 指定 `models/` 目录内的其他输出路径，越出该目录的路径会被拒绝。
+脚本会把多元高斯参数 μ/σ 与 F1 自动选出的阈值 ε 一起保存到 `models/energy_model.pkl`（另含 `n_samples`、`threshold_method`、`trained_at` 元数据），随后弹出 3D 概率曲面窗口（蓝色为正常点、红色为异常点）；关闭窗口后脚本即结束。可通过环境变量 `ENERGY_MODEL_PATH` 指定 `models/` 目录内的其他输出路径，越出该目录的路径会被拒绝。
 
 ### 3. 启动推理服务
 ```bash
@@ -68,7 +68,7 @@ curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -
   "prediction": {
     "is_anomaly": true,
     "probability": 5.212464536070528e-18,
-    "threshold": 1e-05
+    "threshold": 0.0026430229932921964
   },
   "message": "检测到异常运行"
 }
