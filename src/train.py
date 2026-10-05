@@ -32,6 +32,17 @@ def build_labeled_samples():
     return features, labels
 
 
+def fit_normal_parameters(features, labels):
+    features = np.asarray(features)
+    labels = np.asarray(labels)
+    if features.ndim != 2 or labels.shape != (features.shape[0],):
+        raise ValueError("features must be 2-D and labels must match its row count")
+    normal = features[labels == 0]
+    if normal.shape[0] < 2:
+        raise ValueError("at least two normal samples are required to fit covariance")
+    return normal.mean(axis=0), np.cov(normal, rowvar=False)
+
+
 def train(model_path=None):
     requested = (
         model_path if model_path is not None else os.environ.get("ENERGY_MODEL_PATH")
@@ -46,9 +57,7 @@ def train(model_path=None):
         raise ValueError(f"model path must stay inside {MODELS_DIR}")
 
     features, labels = build_labeled_samples()
-    df_2d = pd.DataFrame(features, columns=FEATURE_COLUMNS)
-    mu_2d = df_2d.mean().values
-    sigma_2d = np.cov(df_2d.values, rowvar=False)
+    mu_2d, sigma_2d = fit_normal_parameters(features, labels)
 
     probabilities = multivariate_normal.pdf(features, mean=mu_2d, cov=sigma_2d)
     epsilon, best_f1 = find_best_threshold(labels, probabilities)
