@@ -1,5 +1,7 @@
 # 🛢️ 能源设备多维运行状态监测系统 (Energy-Anomaly-Detector)
 
+![CI](https://github.com/lii-lii321/Energy-Anomaly-Detector/actions/workflows/ci.yml/badge.svg)
+
 > **基于多元高斯分布 (Multivariate Gaussian) 的工业级异常检测方案**
 
 ## 📖 项目背景
@@ -34,6 +36,7 @@ Energy-Anomaly-Detector/
 │   └── real_time_monitor.py    # 实时监测命令行演示
 ├── models/                     # 训练好的模型权重 (pkl)
 ├── assets/                     # 演示截图
+├── .github/                    # GitHub Actions CI 配置
 ├── requirements.txt            # 项目依赖
 └── .gitignore
 ```
@@ -82,9 +85,11 @@ streamlit run src/app_ui.py
 ```
 
 ### 6. 运行测试
+本地跑完整测试套件：
 ```bash
 python -m pytest -q
 ```
+推送后 GitHub Actions（`.github/workflows/ci.yml`）会在 `ubuntu-latest` 上执行同样的 `pip install -r requirements.txt` + `python -m pytest -q` 门禁，全绿才算通过。
 
 ## 📊 系统演示 (System Demo)
 
