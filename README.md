@@ -48,8 +48,9 @@ pip install -r requirements.txt
 ### 2. 训练模型
 ```bash
 python src/train.py
+python src/train.py --show
 ```
-脚本会把多元高斯参数 μ/σ 与 F1 自动选出的阈值 ε 一起保存到 `models/energy_model.pkl`（另含 `n_samples`、`threshold_method`、`trained_at` 元数据），随后弹出 3D 概率曲面窗口（蓝色为正常点、红色为异常点）；关闭窗口后脚本即结束。μ/σ 仅用 200 条正常样本估计，注入异常仅参与阈值评估，避免离群点污染参数估计。可通过环境变量 `ENERGY_MODEL_PATH` 指定 `models/` 目录内的其他输出路径，越出该目录的路径会被拒绝。
+脚本会把多元高斯参数 μ/σ 与 F1 自动选出的阈值 ε 一起保存到 `models/energy_model.pkl`（另含 `n_samples`、`threshold_method`、`trained_at` 元数据）。默认以无显示的 Agg 后端运行：把 3D 概率曲面（蓝色为正常点、红色为异常点）保存到 `assets/3d_plot.png` 后自然退出，可在 Linux 服务器 / CI 等无显示环境复现仓库演示图；只有加 `--show` 才会在保存后弹出交互窗口。μ/σ 仅用 200 条正常样本估计，注入异常仅参与阈值评估，避免离群点污染参数估计。可通过环境变量 `ENERGY_MODEL_PATH` 指定 `models/` 目录内的其他输出路径，越出该目录的路径会被拒绝。
 
 ### 3. 启动推理服务
 ```bash

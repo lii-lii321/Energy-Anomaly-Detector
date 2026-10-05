@@ -1,3 +1,4 @@
+import argparse
 import os
 import pickle
 from datetime import datetime, timezone
@@ -7,10 +8,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from mpl_toolkits.mplot3d import Axes3D
 from scipy.stats import multivariate_normal
 
-from model_paths import MODELS_DIR, resolve_model_path
+from model_paths import (
+    ASSETS_DIR,
+    DEFAULT_PLOT_PATH,
+    MODELS_DIR,
+    resolve_model_path,
+)
 from threshold import find_best_threshold
 
 # 支持通过环境变量 ENERGY_MODEL_PATH 指定 models/ 目录内的输出文件名，越界路径会被拒绝
@@ -88,7 +93,9 @@ def score_labeled_samples(model_data):
     return df
 
 
-def plot_3d_anomaly(df, mu, sigma):
+def plot_3d_anomaly(df, mu, sigma, output_path=None):
+    if output_path is not None and not str(output_path).strip():
+        raise ValueError("output_path must be a non-empty string when provided")
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
     x = np.linspace(df["pressure"].min() - 0.1, df["pressure"].max() + 0.1, 100)
@@ -113,13 +120,34 @@ def plot_3d_anomaly(df, mu, sigma):
     )
     ax.set_xlabel("Pressure (MPa)")
     ax.set_ylabel("Current (A)")
+    if output_path is not None:
+        fig.savefig(output_path, dpi=150)
+        plt.close(fig)
+        return output_path
     plt.show()
 
 
 if __name__ == "__main__":
-    try:
-        matplotlib.use("Qt5Agg")
-    except Exception:
-        pass
+    parser = argparse.ArgumentParser(description="训练能源设备异常检测模型")
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="训练并保存 assets/3d_plot.png 后弹出 3D 交互窗口（默认无头运行，不弹窗）",
+    )
+    args = parser.parse_args()
+
+    if args.show:
+        try:
+            matplotlib.use("Qt5Agg")
+        except Exception:
+            pass
+    else:
+        matplotlib.use("Agg")
+
     trained = train()
-    plot_3d_anomaly(score_labeled_samples(trained), trained["mu"], trained["sigma"])
+    os.makedirs(ASSETS_DIR, exist_ok=True)
+    df = score_labeled_samples(trained)
+    plot_3d_anomaly(df, trained["mu"], trained["sigma"], output_path=DEFAULT_PLOT_PATH)
+    print(f"✅ 3D 概率曲面已保存至: {DEFAULT_PLOT_PATH}")
+    if args.show:
+        plot_3d_anomaly(df, trained["mu"], trained["sigma"])

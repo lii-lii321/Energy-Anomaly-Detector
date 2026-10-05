@@ -3,6 +3,8 @@ import os
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.abspath(os.path.join(SRC_DIR, "..", "models"))
 DEFAULT_MODEL_PATH = os.path.join(MODELS_DIR, "energy_model.pkl")
+ASSETS_DIR = os.path.abspath(os.path.join(SRC_DIR, "..", "assets"))
+DEFAULT_PLOT_PATH = os.path.join(ASSETS_DIR, "3d_plot.png")
 
 
 def is_inside_models_dir(path):
