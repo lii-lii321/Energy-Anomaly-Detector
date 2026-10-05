@@ -1,9 +1,14 @@
+import os
 import pickle
+
 import numpy as np
 from scipy.stats import multivariate_normal
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(current_dir, "..", "models", "energy_model.pkl")
+
 # 1. 加载我们训练好的“专家经验”（模型参数）
-with open("energy_model.pkl", "rb") as f:
+with open(model_path, "rb") as f:
     model_params = pickle.load(f)
 
 mu = model_params["mu"]

@@ -13,11 +13,11 @@ try:
 except:
     pass
 
+from model_paths import resolve_model_path
+
 # --- 核心修复：自动获取绝对路径，不再依赖运行位置 ---
-# 获取当前脚本所在目录 (.../src)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# 计算出 models 文件夹的绝对路径 (.../models/energy_model.pkl)
-model_path = os.path.join(current_dir, "../models/energy_model.pkl")
+# 支持通过环境变量 ENERGY_MODEL_PATH 传入输出路径，越出 models/ 目录的路径会被拒绝
+model_path = resolve_model_path(os.environ.get("ENERGY_MODEL_PATH"))
 
 # 1. 模拟数据
 np.random.seed(42)
