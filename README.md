@@ -7,28 +7,84 @@
 
 ## 🌟 核心亮点 (Key Features)
 - **跨维度逻辑检测**：利用 **协方差矩阵 (Covariance Matrix)** 建模特征耦合关系，精准识别违反物理逻辑的隐蔽故障。
-- **自动化参数寻优**：自主实现 **F1-Score** 验证机制，在极度不平衡样本下自动搜索最佳概率阈值 $\epsilon$。
+- **阈值判定工具**：提供基于 **F1-Score** 的阈值搜索工具函数 `find_best_threshold`（见 `src/threshold.py`）；训练产物当前使用固定概率阈值 ε=1e-5，自动寻优尚未接入训练流程。
 - **全栈工程架构**：
   - **算法层**：Python + SciPy 实现多元高斯建模与模型持久化。
   - **服务层**：基于 **FastAPI** 封装异步推理接口，支持高并发数据流处理。
   - **展示层**：使用 **Streamlit** 构建可视化驾驶舱，提供 3D 概率曲面分析与实时报警。
+  - **工程护栏**：模型输出路径守卫（`src/model_paths.py`，越出 `models/` 目录的 `ENERGY_MODEL_PATH` 会被拒绝）+ pytest 回归测试。
 
 ## 🛠️ 技术栈 (Tech Stack)
 - **Core**: Python 3.9+, NumPy, Pandas, SciPy
 - **Web**: FastAPI, Uvicorn, Streamlit
 - **Visualization**: Matplotlib (3D), Streamlit Charts
+- **Testing**: pytest, FastAPI TestClient
 
 ## 📂 项目结构
 ```text
-Energy-Anomaly-Detection/
-├── data/               # 模拟传感器数据
-├── models/             # 训练好的模型权重 (pkl)
-├── src/                # 核心代码
-│   ├── train.py        # 模型训练与 3D 可视化
-│   ├── main.py         # FastAPI 后端推理服务
-│   └── app_ui.py       # Streamlit 前端交互界面
-└── requirements.txt    # 项目依赖
+Energy-Anomaly-Detector/
+├── src/                        # 核心代码
+│   ├── train.py                # 模型训练与 3D 可视化
+│   ├── main.py                 # FastAPI 后端推理服务
+│   ├── app_ui.py               # Streamlit 前端交互界面
+│   ├── model_paths.py          # 模型输出路径守卫
+│   └── threshold.py            # F1 阈值搜索工具函数
+├── tests/                      # pytest 测试套件
+├── scripts/                    # 辅助脚本
+│   └── real_time_monitor.py    # 实时监测命令行演示
+├── models/                     # 训练好的模型权重 (pkl)
+├── assets/                     # 演示截图
+├── requirements.txt            # 项目依赖
+└── .gitignore
 ```
+
+## 🚀 快速开始 (Quick Start)
+
+### 1. 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+### 2. 训练模型
+```bash
+python src/train.py
+```
+脚本会先把多元高斯模型保存到 `models/energy_model.pkl`，随后弹出 3D 概率曲面窗口（蓝色为正常点、红色为异常点）；关闭窗口后脚本即结束。可通过环境变量 `ENERGY_MODEL_PATH` 指定 `models/` 目录内的其他输出路径，越出该目录的路径会被拒绝。
+
+### 3. 启动推理服务
+```bash
+uvicorn src.main:app --port 8000
+```
+
+### 4. 调用推理接口
+服务启动后，另开一个终端执行：
+```bash
+curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d "{\"pressure\":1.7,\"current\":18.0}"
+```
+真实响应示例：
+```json
+{
+  "status": "success",
+  "prediction": {
+    "is_anomaly": true,
+    "probability": 5.212464536070528e-18,
+    "threshold": 1e-05
+  },
+  "message": "检测到异常运行"
+}
+```
+
+### 5. 可视化驾驶舱
+保持推理服务运行，另开一个终端执行：
+```bash
+streamlit run src/app_ui.py
+```
+
+### 6. 运行测试
+```bash
+python -m pytest -q
+```
+
 ## 📊 系统演示 (System Demo)
 
 ### 1. 3D 概率曲面分析
