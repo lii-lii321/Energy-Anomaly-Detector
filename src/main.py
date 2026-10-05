@@ -1,34 +1,49 @@
-import os
+import logging
+import pickle
+from contextlib import asynccontextmanager
+
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import pickle
-import numpy as np
 from scipy.stats import multivariate_normal
 
-app = FastAPI(title="能源设备异常监测系统 API")
+try:
+    from model_paths import DEFAULT_MODEL_PATH
+except ImportError:  # uvicorn 以 src.main:app 启动时 src/ 不在 sys.path
+    from src.model_paths import DEFAULT_MODEL_PATH
 
-# --- 核心修复：自动获取绝对路径 ---
-current_dir = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(current_dir, "../models/energy_model.pkl")
+logger = logging.getLogger(__name__)
 
-# 初始化变量
+MODEL_PATH = DEFAULT_MODEL_PATH
+
 mu = None
 sigma = None
 epsilon = 1e-5
 
-# 加载模型
-try:
-    with open(model_path, "rb") as f:
-        model_params = pickle.load(f)
+
+def load_model():
+    global mu, sigma, epsilon
+    try:
+        with open(MODEL_PATH, "rb") as f:
+            model_params = pickle.load(f)
+    except FileNotFoundError:
+        logger.warning(
+            "未找到模型文件：%s，请先运行 src/train.py 生成模型", MODEL_PATH
+        )
+        return
     mu = model_params["mu"]
     sigma = model_params["sigma"]
     epsilon = model_params.get("epsilon", 1e-5)
-    print(f"✅ 成功加载模型：{os.path.abspath(model_path)}")
-except FileNotFoundError:
-    print(
-        f"❌ 错误：找不到模型文件。程序尝试查找的路径是：{os.path.abspath(model_path)}"
-    )
-    print("请先运行 src/train.py 生成模型！")
+    logger.info("成功加载模型：%s", MODEL_PATH)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_model()
+    yield
+
+
+app = FastAPI(title="能源设备异常监测系统 API", lifespan=lifespan)
 
 
 class SensorData(BaseModel):
@@ -55,7 +70,8 @@ async def predict_status(data: SensorData):
             "message": "检测到异常运行" if is_anomaly else "系统运行正常",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail="推理失败，请查看服务端日志") from e
 
 
 @app.get("/")

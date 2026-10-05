@@ -79,6 +79,6 @@ def test_predict_returns_500_when_model_is_missing(client, monkeypatch):
     assert "模型未加载" in response.json()["detail"]
 
 
-def test_loaded_model_parameters_are_two_dimensional():
+def test_loaded_model_parameters_are_two_dimensional(client):
     assert isinstance(main.mu, np.ndarray)
     assert main.sigma.shape == (2, 2)
