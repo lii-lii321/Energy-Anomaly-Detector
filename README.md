@@ -1,6 +1,7 @@
 # 🛢️ 能源设备多维运行状态监测系统 (Energy-Anomaly-Detector)
 
 ![CI](https://github.com/lii-lii321/Energy-Anomaly-Detector/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 > **基于多元高斯分布 (Multivariate Gaussian) 的工业级异常检测方案**
 
@@ -179,3 +180,8 @@ docker compose down
 ```bash
 python scripts/evaluate_model.py
 ```
+
+## 📄 许可证 (License)
+
+本项目基于 MIT 许可证开源，详见 [LICENSE](./LICENSE)。
+
