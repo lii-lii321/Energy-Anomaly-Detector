@@ -3,9 +3,8 @@ import pickle
 
 import numpy as np
 import pytest
-from scipy.stats import multivariate_normal
-
 from conftest import REPO_ROOT
+from scipy.stats import multivariate_normal
 
 MODEL_PATH = os.path.join(REPO_ROOT, "models", "energy_model.pkl")
 

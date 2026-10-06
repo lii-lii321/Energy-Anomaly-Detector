@@ -9,6 +9,7 @@ from scipy.stats import multivariate_normal
 matplotlib.use("Agg")
 
 from conftest import REPO_ROOT
+
 from threshold import find_best_threshold
 from train import (
     build_labeled_samples,

@@ -1,8 +1,8 @@
 import os
 
 import pytest
-
 from conftest import REPO_ROOT
+
 from train import train
 
 

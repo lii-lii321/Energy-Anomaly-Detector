@@ -5,12 +5,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 from scipy.stats import multivariate_normal
 
 import main
-import src.main
-from conftest import REPO_ROOT
 from model_paths import DEFAULT_MODEL_PATH
 
 
@@ -54,7 +53,7 @@ def test_model_loads_in_lifespan_not_at_import(monkeypatch):
     assert response.status_code == 500
     assert "模型未加载" in response.json()["detail"]
 
-    with TestClient(main.app) as client:
+    with TestClient(main.app):
         assert isinstance(main.mu, np.ndarray)
         assert main.sigma.shape == (2, 2)
 

@@ -1,6 +1,6 @@
 import streamlit as st
 
-from api_client import ApiUnavailable, DEFAULT_BASE_URL, call_api
+from api_client import DEFAULT_BASE_URL, ApiUnavailable, call_api
 from sensor_limits import (
     CURRENT_SLIDER_MAX,
     CURRENT_SLIDER_MIN,

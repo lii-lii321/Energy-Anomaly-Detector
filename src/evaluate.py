@@ -43,7 +43,9 @@ def compute_metrics(y_true, y_pred):
     return {"precision": precision, "recall": recall, "f1": f1}
 
 
-def build_holdout_samples(n_normal=DEFAULT_N_NORMAL, n_anomaly=DEFAULT_N_ANOMALY, seed=HOLDOUT_SEED):
+def build_holdout_samples(
+    n_normal=DEFAULT_N_NORMAL, n_anomaly=DEFAULT_N_ANOMALY, seed=HOLDOUT_SEED
+):
     for name, count in (("n_normal", n_normal), ("n_anomaly", n_anomaly)):
         if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
             raise ValueError(f"{name} must be a positive integer")
@@ -116,4 +118,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=HOLDOUT_SEED)
     parser.add_argument("--model-path", default=None)
     args = parser.parse_args()
-    print(format_metrics(evaluate(load_committed_model(args.model_path or None), args.n_normal, args.n_anomaly, args.seed)))
+    model = load_committed_model(args.model_path or None)
+    result = evaluate(model, args.n_normal, args.n_anomaly, args.seed)
+    print(format_metrics(result))

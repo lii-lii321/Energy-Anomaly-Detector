@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 import requests
+from conftest import REPO_ROOT
 
 import api_client
-from api_client import ApiUnavailable, DEFAULT_TIMEOUT, call_api
-from conftest import REPO_ROOT
+from api_client import DEFAULT_TIMEOUT, ApiUnavailable, call_api
 
 APP_UI_PATH = Path(REPO_ROOT) / "src" / "app_ui.py"
 

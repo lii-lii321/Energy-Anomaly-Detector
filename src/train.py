@@ -105,11 +105,11 @@ def plot_3d_anomaly(df, mu, sigma, output_path=None):
     rv = multivariate_normal(mu, sigma)
     Z = rv.pdf(pos)
     ax.plot_surface(X, Y, Z, cmap="viridis", alpha=0.5)
-    normal = df[df["is_anomaly"] == False]
+    normal = df[~df["is_anomaly"]]
     ax.scatter(
         normal["pressure"], normal["current"], normal["probability"], c="blue", s=20
     )
-    anomaly = df[df["is_anomaly"] == True]
+    anomaly = df[df["is_anomaly"]]
     ax.scatter(
         anomaly["pressure"],
         anomaly["current"],

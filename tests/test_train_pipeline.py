@@ -5,9 +5,9 @@ import sys
 
 import numpy as np
 import pytest
+from conftest import REPO_ROOT
 from scipy.stats import multivariate_normal
 
-from conftest import REPO_ROOT
 from threshold import find_best_threshold
 from train import build_labeled_samples, fit_normal_parameters, train
 

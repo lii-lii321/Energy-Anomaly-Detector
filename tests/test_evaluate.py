@@ -4,8 +4,8 @@ import re
 
 import numpy as np
 import pytest
-
 from conftest import REPO_ROOT
+
 from evaluate import (
     ANOMALY_SIGMA_HIGH,
     ANOMALY_SIGMA_LOW,

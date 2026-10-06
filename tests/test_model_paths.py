@@ -1,8 +1,8 @@
 import os
 
 import pytest
-
 from conftest import REPO_ROOT
+
 from model_paths import DEFAULT_MODEL_PATH, MODELS_DIR, resolve_model_path
 
 

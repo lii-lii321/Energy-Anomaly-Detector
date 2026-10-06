@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from conftest import REPO_ROOT
 
 WORKFLOW_PATH = Path(REPO_ROOT) / ".github" / "workflows" / "ci.yml"
@@ -34,3 +33,16 @@ def test_ci_steps_install_requirements_and_run_pytest():
     commands = "\n".join(_step_commands(_load_workflow()))
     assert "pip install -r requirements.txt" in commands
     assert "pytest" in commands
+
+
+def test_ci_steps_run_ruff_check_before_pytest():
+    commands = _step_commands(_load_workflow())
+    lint_positions = [i for i, cmd in enumerate(commands) if "ruff check" in cmd]
+    test_positions = [i for i, cmd in enumerate(commands) if "pytest" in cmd]
+
+    assert lint_positions, "ci.yml must contain a ruff check step"
+    assert test_positions, "ci.yml must contain a pytest step"
+    assert min(lint_positions) < max(test_positions), (
+        "ruff check step must run before the pytest step"
+    )
+    assert "python -m ruff check ." in "\n".join(commands)

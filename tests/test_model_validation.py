@@ -4,9 +4,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from conftest import REPO_ROOT
 
 import main
-from conftest import REPO_ROOT
 from model_paths import DEFAULT_MODEL_PATH
 
 VALID_MU = [2.1, 15.0]

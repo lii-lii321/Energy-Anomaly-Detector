@@ -2,10 +2,10 @@ from pathlib import Path
 
 import annotated_types
 import pytest
+from conftest import REPO_ROOT
 from fastapi.testclient import TestClient
 
 import main
-from conftest import REPO_ROOT
 from sensor_limits import (
     CURRENT_LIMIT_MAX,
     CURRENT_LIMIT_MIN,
