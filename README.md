@@ -44,6 +44,9 @@ Energy-Anomaly-Detector/
 ├── models/                     # 训练好的模型权重 (pkl)
 ├── assets/                     # 演示截图
 ├── .github/                    # GitHub Actions CI 配置
+├── Dockerfile                  # api/ui 共用镜像（python:3.10-slim，uvicorn 启动）
+├── docker-compose.yml          # 一键编排 api(8000) 与 ui(8501) 两服务
+├── .dockerignore               # 构建上下文裁剪（tests/assets 等不进镜像）
 ├── requirements.txt            # 项目依赖
 ├── pyproject.toml              # 工具链配置（ruff / pytest）
 └── .gitignore
@@ -128,6 +131,21 @@ streamlit run src/app_ui.py
 python -m pytest -q
 ```
 推送后 GitHub Actions（`.github/workflows/ci.yml`）会在 `ubuntu-latest` 上以 Python 3.10 / 3.12 双版本矩阵执行同样的 `pip install -r requirements.txt` + ruff 检查 + `python -m pytest -q` 门禁，全绿才算通过。
+
+### 7. Docker 一键启动
+装有 Docker 的机器上，在仓库根目录执行：
+```bash
+docker compose up --build
+```
+compose 用同一份镜像（`python:3.10-slim` 基础层，`models/energy_model.pkl` 已打入镜像，启动时由 lifespan 加载）拉起两个服务：
+
+- `api`：8000 端口提供 FastAPI 推理接口，内置 `GET /health` 健康检查；
+- `ui`：8501 端口启动 Streamlit 驾驶舱，通过环境变量 `ENERGY_API_BASE=http://api:8000` 指向 api，并在 api 健康检查通过后才启动（`depends_on: condition: service_healthy`）。
+
+等待构建与就绪后访问 http://localhost:8501 即可使用（后端接口在 http://localhost:8000/docs）。停止并清理容器：
+```bash
+docker compose down
+```
 
 ## 📊 系统演示 (System Demo)
 
