@@ -5,6 +5,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 
 from model_paths import DEFAULT_MODEL_PATH
+from threshold import compute_prf
 from train import NORMAL_COV, NORMAL_MEAN
 
 HOLDOUT_SEED = 123
@@ -15,32 +16,8 @@ ANOMALY_SIGMA_HIGH = 3.0
 
 
 def compute_metrics(y_true, y_pred):
-    y_true = np.asarray(y_true, dtype=int)
-    y_pred = np.asarray(y_pred, dtype=int)
-    if y_true.size == 0 or y_true.shape != y_pred.shape:
-        raise ValueError("y_true and y_pred must be non-empty arrays of equal length")
-    if not np.all(np.isin(y_true, (0, 1))) or not np.all(np.isin(y_pred, (0, 1))):
-        raise ValueError("y_true and y_pred must contain only 0 and 1")
-
-    true_positive = int(np.sum((y_true == 1) & (y_pred == 1)))
-    false_positive = int(np.sum((y_true == 0) & (y_pred == 1)))
-    false_negative = int(np.sum((y_true == 1) & (y_pred == 0)))
-    precision = (
-        true_positive / (true_positive + false_positive)
-        if true_positive + false_positive > 0
-        else 0.0
-    )
-    recall = (
-        true_positive / (true_positive + false_negative)
-        if true_positive + false_negative > 0
-        else 0.0
-    )
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if precision + recall > 0
-        else 0.0
-    )
-    return {"precision": precision, "recall": recall, "f1": f1}
+    """兼容入口：precision/recall/F1 统一实现在 threshold.compute_prf。"""
+    return compute_prf(y_true, y_pred)
 
 
 def build_holdout_samples(

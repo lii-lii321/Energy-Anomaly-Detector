@@ -148,6 +148,19 @@ def test_app_ui_has_no_hardcoded_address_or_raw_response_access():
     assert "ApiUnavailable" in source
 
 
+def test_app_ui_batch_panel_uses_client_and_shared_limits():
+    source = APP_UI_PATH.read_text(encoding="utf-8")
+
+    assert "call_api_batch" in source
+    assert "file_uploader" in source
+    assert "download_button" in source
+    assert "PRESSURE_LIMIT_MIN" in source
+    assert "PRESSURE_LIMIT_MAX" in source
+    assert "CURRENT_LIMIT_MIN" in source
+    assert "CURRENT_LIMIT_MAX" in source
+    assert "st.error" in source
+
+
 def test_api_client_stays_a_pure_logic_module():
     source = (Path(REPO_ROOT) / "src" / "api_client.py").read_text(encoding="utf-8")
 

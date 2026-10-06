@@ -36,14 +36,16 @@ Energy-Anomaly-Detector/
 │   └── evaluate.py             # 留出集评估：precision/recall/F1
 ├── tests/                      # pytest 测试套件
 ├── scripts/                    # 辅助脚本
-│   ├── real_time_monitor.py    # 实时监测命令行演示
-│   └── evaluate_model.py       # 一行复现留出集评估指标
+│   ├── real_time_monitor.py    # 实时监测命令行演示（ε 读模型元数据）
+│   ├── evaluate_model.py       # 一行复现留出集评估指标
+│   └── generate_data.py        # 导出合成数据工件 data/sensor_data.csv
 ├── data/                       # 合成数据工件
 │   └── sensor_data.csv         # 由 scripts/generate_data.py 从 build_labeled_samples 确定性生成
 ├── models/                     # 训练好的模型权重 (pkl)
 ├── assets/                     # 演示截图
 ├── .github/                    # GitHub Actions CI 配置
 ├── requirements.txt            # 项目依赖
+├── pyproject.toml              # 工具链配置（ruff / pytest）
 └── .gitignore
 ```
 
@@ -88,6 +90,27 @@ curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -
 
 服务还提供 `GET /health` 探活接口：返回 `status`、`model_loaded`、`threshold` 三个字段，供部署探活与演示排障使用（不暴露模型文件路径）。
 
+另有两个扩展接口：
+
+- `GET /model`：返回模型元数据（自动寻优的阈值 ε、`n_samples`、`threshold_method`、`trained_at`）与传感器物理量程边界，供客户端做参数展示与预校验，同样不暴露模型文件路径；模型未加载时 `model_loaded` 为 `false` 且元数据字段为 `null`。
+- `POST /predict/batch`：批量推理。请求体为 `{"samples": [{"pressure": ..., "current": ...}, ...]}`，单次最多 1000 条（空批次或超限返回 422，逐条复用与 `/predict` 相同的物理量程校验），返回 `n_total` / `n_anomaly` 汇总与逐条 `predictions`（含回显入参、`is_anomaly`、`probability`、`threshold`）：
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict/batch -H "Content-Type: application/json" -d "{\"samples\":[{\"pressure\":2.05,\"current\":14.8},{\"pressure\":1.7,\"current\":18.5}]}"
+```
+
+```json
+{
+  "status": "success",
+  "n_total": 2,
+  "n_anomaly": 1,
+  "predictions": [
+    {"pressure": 2.05, "current": 14.8, "is_anomaly": false, "probability": 0.198, "threshold": 0.001855},
+    {"pressure": 1.7, "current": 18.5, "is_anomaly": true, "probability": 5.2e-18, "threshold": 0.001855}
+  ]
+}
+```
+
 `/predict` 对入参做物理范围校验（闭区间）：井口压力 0–10 MPa、电机电流 0–50 A，负压力、超标电流等物理上不可能的读数会被直接拒绝（422），不会进入概率计算；校验边界严格覆盖前端滑条量程（压力 1.0–3.0 MPa、电流 10.0–25.0 A，两组量程统一维护在 `src/sensor_limits.py`），拖动滑条演示永远不会触发 422。
 
 ### 5. 可视化驾驶舱
@@ -97,12 +120,14 @@ streamlit run src/app_ui.py
 ```
 驾驶舱默认请求 `http://127.0.0.1:8000`，如后端换了端口或主机，可在页面左侧边栏的"后端地址"输入框直接修改（也可在启动前设置环境变量 `ENERGY_API_BASE`）。请求带 3 秒超时并检查状态码：后端未启动或返回非 2xx 时，点击"开始诊断"不会抛出原始堆栈，而是给出中文提示（含 `uvicorn src.main:app --port 8000` 启动命令）。
 
+页面下方的"批量诊断（上传 CSV）"面板支持批量检测：上传包含 `pressure`、`current` 两列的 CSV，前端先按物理量程过滤越界行并提示跳过数量，再调用 `/predict/batch` 批量推理，展示样本总数 / 异常样本 / 异常占比汇总与逐条结果表，并可一键下载诊断结果 CSV；缺列、含非数值或全部越界的文件会得到对应的中文错误提示。
+
 ### 6. 运行测试
 本地跑完整测试套件：
 ```bash
 python -m pytest -q
 ```
-推送后 GitHub Actions（`.github/workflows/ci.yml`）会在 `ubuntu-latest` 上执行同样的 `pip install -r requirements.txt` + `python -m pytest -q` 门禁，全绿才算通过。
+推送后 GitHub Actions（`.github/workflows/ci.yml`）会在 `ubuntu-latest` 上以 Python 3.10 / 3.12 双版本矩阵执行同样的 `pip install -r requirements.txt` + ruff 检查 + `python -m pytest -q` 门禁，全绿才算通过。
 
 ## 📊 系统演示 (System Demo)
 

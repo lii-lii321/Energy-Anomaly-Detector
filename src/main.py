@@ -28,10 +28,12 @@ logger = logging.getLogger(__name__)
 
 MODEL_PATH = DEFAULT_MODEL_PATH
 DEFAULT_EPSILON = 1e-5
+BATCH_MAX_SAMPLES = 1000
 
 mu = None
 sigma = None
 epsilon = DEFAULT_EPSILON
+model_meta = {}
 
 
 def validate_model_params(model_params):
@@ -83,7 +85,15 @@ def load_model():
         mu = None
         sigma = None
         epsilon = DEFAULT_EPSILON
+        model_meta.clear()
         return
+    model_meta.update(
+        {
+            "n_samples": model_params.get("n_samples"),
+            "threshold_method": model_params.get("threshold_method"),
+            "trained_at": model_params.get("trained_at"),
+        }
+    )
     logger.info("成功加载模型：%s", MODEL_PATH)
 
 
@@ -115,6 +125,10 @@ class SensorData(BaseModel):
     )
 
 
+class BatchPredictRequest(BaseModel):
+    samples: list[SensorData] = Field(min_length=1, max_length=BATCH_MAX_SAMPLES)
+
+
 @app.post("/predict")
 async def predict_status(data: SensorData):
     if mu is None:
@@ -136,6 +150,60 @@ async def predict_status(data: SensorData):
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=500, detail="推理失败，请查看服务端日志") from e
+
+
+@app.post("/predict/batch")
+async def predict_batch(batch: BatchPredictRequest):
+    if mu is None:
+        raise HTTPException(status_code=500, detail="模型未加载，请检查服务器日志")
+
+    try:
+        samples = np.array([[item.pressure, item.current] for item in batch.samples])
+        probabilities = multivariate_normal.pdf(samples, mean=mu, cov=sigma)
+        predictions = [
+            {
+                "pressure": item.pressure,
+                "current": item.current,
+                "is_anomaly": bool(prob < epsilon),
+                "probability": float(prob),
+                "threshold": epsilon,
+            }
+            for item, prob in zip(batch.samples, probabilities, strict=True)
+        ]
+        return {
+            "status": "success",
+            "n_total": len(predictions),
+            "n_anomaly": sum(p["is_anomaly"] for p in predictions),
+            "predictions": predictions,
+        }
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail="推理失败，请查看服务端日志") from e
+
+
+@app.get("/model")
+async def model_info():
+    loaded = mu is not None
+    return {
+        "status": "ok",
+        "model_loaded": loaded,
+        "epsilon": epsilon if loaded else None,
+        "n_samples": model_meta.get("n_samples") if loaded else None,
+        "threshold_method": model_meta.get("threshold_method") if loaded else None,
+        "trained_at": model_meta.get("trained_at") if loaded else None,
+        "feature_limits": {
+            "pressure": {
+                "min": PRESSURE_LIMIT_MIN,
+                "max": PRESSURE_LIMIT_MAX,
+                "unit": "MPa",
+            },
+            "current": {
+                "min": CURRENT_LIMIT_MIN,
+                "max": CURRENT_LIMIT_MAX,
+                "unit": "A",
+            },
+        },
+    }
 
 
 @app.get("/health")

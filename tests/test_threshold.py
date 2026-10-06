@@ -1,7 +1,45 @@
 import numpy as np
 import pytest
 
-from threshold import compute_f1, find_best_threshold
+from threshold import compute_f1, compute_prf, find_best_threshold
+
+
+def test_compute_prf_known_precision_and_recall():
+    y_true = [1, 1, 1, 0, 0, 0]
+    y_pred = [1, 0, 1, 1, 0, 0]
+
+    metrics = compute_prf(y_true, y_pred)
+
+    assert metrics["precision"] == pytest.approx(2 / 3)
+    assert metrics["recall"] == pytest.approx(2 / 3)
+    assert metrics["f1"] == pytest.approx(2 / 3)
+
+
+def test_compute_prf_zero_division_branches_score_zero():
+    assert compute_prf([0, 0, 1, 1], [0, 0, 0, 0]) == {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+    }
+    assert compute_prf([0, 0], [1, 1]) == {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+
+def test_compute_prf_rejects_invalid_inputs():
+    with pytest.raises(ValueError):
+        compute_prf([], [])
+    with pytest.raises(ValueError):
+        compute_prf([1, 0], [1])
+    with pytest.raises(ValueError):
+        compute_prf([1, 2], [1, 0])
+    with pytest.raises(ValueError):
+        compute_prf([1, 0], [1, 2])
+
+
+def test_compute_f1_matches_compute_prf_f1():
+    y_true = [1, 1, 1, 0, 0]
+    y_pred = [1, 0, 1, 1, 0]
+
+    assert compute_f1(y_true, y_pred) == compute_prf(y_true, y_pred)["f1"]
 
 
 def test_compute_f1_known_precision_and_recall():

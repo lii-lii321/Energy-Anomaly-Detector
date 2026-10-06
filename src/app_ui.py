@@ -1,9 +1,14 @@
+import pandas as pd
 import streamlit as st
 
-from api_client import DEFAULT_BASE_URL, ApiUnavailable, call_api
+from api_client import DEFAULT_BASE_URL, ApiUnavailable, call_api, call_api_batch
 from sensor_limits import (
+    CURRENT_LIMIT_MAX,
+    CURRENT_LIMIT_MIN,
     CURRENT_SLIDER_MAX,
     CURRENT_SLIDER_MIN,
+    PRESSURE_LIMIT_MAX,
+    PRESSURE_LIMIT_MIN,
     PRESSURE_SLIDER_MAX,
     PRESSURE_SLIDER_MIN,
 )
@@ -50,3 +55,71 @@ with col1:
                     max(0.0, min(1.0, result["prediction"]["probability"] * 2)),
                     text="系统健康度评分",
                 )
+
+st.markdown("---")
+
+with st.expander("📦 批量诊断（上传 CSV）"):
+    st.caption(
+        "CSV 需包含 pressure、current 两列；超出物理量程"
+        "（压力 0–10 MPa、电流 0–50 A）的行会被跳过，不参与诊断。"
+    )
+    uploaded = st.file_uploader("上传传感器数据 CSV", type=["csv"])
+
+    if uploaded is not None and st.button("批量诊断", use_container_width=True):
+        try:
+            frame = pd.read_csv(uploaded)
+        except Exception as exc:
+            st.error(f"CSV 解析失败：{exc}")
+        else:
+            missing = {"pressure", "current"} - set(frame.columns)
+            if missing:
+                st.error(f"CSV 缺少必需列：{', '.join(sorted(missing))}")
+            else:
+                try:
+                    frame["pressure"] = pd.to_numeric(frame["pressure"])
+                    frame["current"] = pd.to_numeric(frame["current"])
+                except (TypeError, ValueError):
+                    st.error("pressure / current 列必须全部为数值")
+                else:
+                    in_range = frame["pressure"].between(
+                        PRESSURE_LIMIT_MIN, PRESSURE_LIMIT_MAX
+                    ) & frame["current"].between(
+                        CURRENT_LIMIT_MIN, CURRENT_LIMIT_MAX
+                    )
+                    skipped = int((~in_range).sum())
+                    valid = frame[in_range]
+                    if valid.empty:
+                        st.error(
+                            "没有通过物理量程校验的数据行"
+                            "（压力 0–10 MPa、电流 0–50 A）"
+                        )
+                    else:
+                        try:
+                            batch = call_api_batch(
+                                list(
+                                    zip(
+                                        valid["pressure"].astype(float).tolist(),
+                                        valid["current"].astype(float).tolist(),
+                                    )
+                                ),
+                                base_url=backend_url,
+                            )
+                        except ApiUnavailable as exc:
+                            st.error(str(exc))
+                        else:
+                            results = pd.DataFrame(batch["predictions"])
+                            total = len(results)
+                            anomaly_count = int(results["is_anomaly"].sum())
+                            metric1, metric2, metric3 = st.columns(3)
+                            metric1.metric("样本总数", total)
+                            metric2.metric("异常样本", anomaly_count)
+                            metric3.metric("异常占比", f"{anomaly_count / total:.1%}")
+                            st.dataframe(results)
+                            if skipped:
+                                st.warning(f"已跳过 {skipped} 条超出物理量程的数据行")
+                            st.download_button(
+                                "下载诊断结果 CSV",
+                                data=results.to_csv(index=False).encode("utf-8"),
+                                file_name="batch_diagnosis_results.csv",
+                                mime="text/csv",
+                            )
