@@ -7,3 +7,8 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# ZCode/工具本地缓存
+.mimosa/
+.v2c/
+.video_agent/

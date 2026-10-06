@@ -38,6 +38,8 @@ Energy-Anomaly-Detector/
 ├── scripts/                    # 辅助脚本
 │   ├── real_time_monitor.py    # 实时监测命令行演示
 │   └── evaluate_model.py       # 一行复现留出集评估指标
+├── data/                       # 合成数据工件
+│   └── sensor_data.csv         # 由 scripts/generate_data.py 从 build_labeled_samples 确定性生成
 ├── models/                     # 训练好的模型权重 (pkl)
 ├── assets/                     # 演示截图
 ├── .github/                    # GitHub Actions CI 配置
@@ -58,6 +60,8 @@ python src/train.py
 python src/train.py --show
 ```
 脚本会把多元高斯参数 μ/σ 与 F1 自动选出的阈值 ε 一起保存到 `models/energy_model.pkl`（另含 `n_samples`、`threshold_method`、`trained_at` 元数据）。默认以无显示的 Agg 后端运行：把 3D 概率曲面（蓝色为正常点、红色为异常点）保存到 `assets/3d_plot.png` 后自然退出，可在 Linux 服务器 / CI 等无显示环境复现仓库演示图；只有加 `--show` 才会在保存后弹出交互窗口。μ/σ 仅用 200 条正常样本估计，注入异常仅参与阈值评估，避免离群点污染参数估计。可通过环境变量 `ENERGY_MODEL_PATH` 指定 `models/` 目录内的其他输出路径，越出该目录的路径会被拒绝。推理服务加载模型时会校验参数结构（μ 为一维长度 2、σ 为 2×2 对称正定矩阵、ε 为正数），坏损或被手改的模型文件会在启动期被拒绝并记录错误日志，服务保持未加载状态而不是带病运行。
+
+`data/sensor_data.csv` 是合成数据工件（200 条正常 + 1 条注入异常，列固定为 `pressure,current,label`），由 `python scripts/generate_data.py` 从 `build_labeled_samples` 确定性生成（seed=42）；`tests/test_data_export.py` 会将提交的 csv 与源函数重新导出的结果逐行比对，防止工件漂移。训练始终以内存中的 `build_labeled_samples` 为唯一事实源，该 csv 仅作导出工件，不是训练输入。
 
 ### 3. 启动推理服务
 ```bash

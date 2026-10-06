@@ -4,7 +4,7 @@ from pathlib import Path
 from conftest import REPO_ROOT
 
 README_PATH = Path(REPO_ROOT) / "README.md"
-PATH_EXTENSIONS = (".py", ".pkl", ".png", ".txt", ".md", ".json")
+PATH_EXTENSIONS = (".py", ".pkl", ".png", ".txt", ".md", ".json", ".csv")
 IMAGE_LINK = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
 INLINE_CODE = re.compile(r"`([^`\n]+)`")
 TREE_ENTRY = re.compile(r"^(?P<indent>(?:│   |    )*)(?:├── |└── )(?P<name>.+)$")
@@ -92,8 +92,15 @@ def test_stale_project_name_is_gone():
     assert "Energy-Anomaly-Detection/" not in _readme_text()
 
 
-def test_nonexistent_data_dir_is_not_mentioned():
-    assert re.search(r"\bdata/", _readme_text()) is None
+DATA_PATH_PATTERN = re.compile(r"\bdata/[\w./-]*")
+
+
+def test_data_dir_references_exist():
+    for match in DATA_PATH_PATTERN.finditer(_readme_text()):
+        referenced = match.group(0).rstrip(".")
+        assert (Path(REPO_ROOT) / referenced).exists(), (
+            f"README references missing data path: {referenced}"
+        )
 
 
 def test_structure_tree_entries_exist():
