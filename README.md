@@ -28,6 +28,7 @@ Energy-Anomaly-Detector/
 ├── src/                        # 核心代码
 │   ├── train.py                # 模型训练与 3D 可视化
 │   ├── main.py                 # FastAPI 后端推理服务
+│   ├── api_client.py           # /predict 客户端：超时、状态码检查、友好错误
 │   ├── app_ui.py               # Streamlit 前端交互界面
 │   ├── model_paths.py          # 模型输出路径守卫
 │   └── threshold.py            # F1 阈值搜索工具函数
@@ -83,6 +84,7 @@ curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -
 ```bash
 streamlit run src/app_ui.py
 ```
+驾驶舱默认请求 `http://127.0.0.1:8000`，如后端换了端口或主机，可在页面左侧边栏的"后端地址"输入框直接修改（也可在启动前设置环境变量 `ENERGY_API_BASE`）。请求带 3 秒超时并检查状态码：后端未启动或返回非 2xx 时，点击"开始诊断"不会抛出原始堆栈，而是给出中文提示（含 `uvicorn src.main:app --port 8000` 启动命令）。
 
 ### 6. 运行测试
 本地跑完整测试套件：
