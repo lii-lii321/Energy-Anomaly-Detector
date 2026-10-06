@@ -28,6 +28,7 @@ Energy-Anomaly-Detector/
 ├── src/                        # 核心代码
 │   ├── train.py                # 模型训练与 3D 可视化
 │   ├── main.py                 # FastAPI 后端推理服务
+│   ├── sensor_limits.py        # 传感器物理量程常量（API 校验与 UI 滑条共用）
 │   ├── api_client.py           # /predict 客户端：超时、状态码检查、友好错误
 │   ├── app_ui.py               # Streamlit 前端交互界面
 │   ├── model_paths.py          # 模型输出路径守卫
@@ -78,6 +79,10 @@ curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -
   "message": "检测到异常运行"
 }
 ```
+
+服务还提供 `GET /health` 探活接口：返回 `status`、`model_loaded`、`threshold` 三个字段，供部署探活与演示排障使用（不暴露模型文件路径）。
+
+`/predict` 对入参做物理范围校验（闭区间）：井口压力 0–10 MPa、电机电流 0–50 A，负压力、超标电流等物理上不可能的读数会被直接拒绝（422），不会进入概率计算；校验边界严格覆盖前端滑条量程（压力 1.0–3.0 MPa、电流 10.0–25.0 A，两组量程统一维护在 `src/sensor_limits.py`），拖动滑条演示永远不会触发 422。
 
 ### 5. 可视化驾驶舱
 保持推理服务运行，另开一个终端执行：

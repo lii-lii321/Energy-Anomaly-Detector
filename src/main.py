@@ -4,13 +4,25 @@ from contextlib import asynccontextmanager
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from scipy.stats import multivariate_normal
 
 try:
     from model_paths import DEFAULT_MODEL_PATH
+    from sensor_limits import (
+        CURRENT_LIMIT_MAX,
+        CURRENT_LIMIT_MIN,
+        PRESSURE_LIMIT_MAX,
+        PRESSURE_LIMIT_MIN,
+    )
 except ImportError:  # uvicorn 以 src.main:app 启动时 src/ 不在 sys.path
     from src.model_paths import DEFAULT_MODEL_PATH
+    from src.sensor_limits import (
+        CURRENT_LIMIT_MAX,
+        CURRENT_LIMIT_MIN,
+        PRESSURE_LIMIT_MAX,
+        PRESSURE_LIMIT_MIN,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +59,22 @@ app = FastAPI(title="能源设备异常监测系统 API", lifespan=lifespan)
 
 
 class SensorData(BaseModel):
-    pressure: float
-    current: float
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"pressure": 2.1, "current": 15.0}],
+        }
+    )
+
+    pressure: float = Field(
+        ge=PRESSURE_LIMIT_MIN,
+        le=PRESSURE_LIMIT_MAX,
+        description="井口压力 (MPa)",
+    )
+    current: float = Field(
+        ge=CURRENT_LIMIT_MIN,
+        le=CURRENT_LIMIT_MAX,
+        description="电机电流 (A)",
+    )
 
 
 @app.post("/predict")
@@ -72,6 +98,15 @@ async def predict_status(data: SensorData):
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=500, detail="推理失败，请查看服务端日志") from e
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok",
+        "model_loaded": mu is not None,
+        "threshold": epsilon,
+    }
 
 
 @app.get("/")

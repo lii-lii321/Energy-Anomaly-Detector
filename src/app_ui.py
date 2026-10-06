@@ -1,6 +1,12 @@
 import streamlit as st
 
 from api_client import ApiUnavailable, DEFAULT_BASE_URL, call_api
+from sensor_limits import (
+    CURRENT_SLIDER_MAX,
+    CURRENT_SLIDER_MIN,
+    PRESSURE_SLIDER_MAX,
+    PRESSURE_SLIDER_MIN,
+)
 
 st.set_page_config(page_title="智慧油井实时监测系统", layout="wide")
 
@@ -13,8 +19,12 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("📡 传感器数据输入")
-    p = st.slider("井口压力 (MPa)", 1.0, 3.0, 2.1, step=0.1)
-    c = st.slider("电机电流 (A)", 10.0, 25.0, 15.0, step=0.1)
+    p = st.slider(
+        "井口压力 (MPa)", PRESSURE_SLIDER_MIN, PRESSURE_SLIDER_MAX, 2.1, step=0.1
+    )
+    c = st.slider(
+        "电机电流 (A)", CURRENT_SLIDER_MIN, CURRENT_SLIDER_MAX, 15.0, step=0.1
+    )
 
     if st.button("开始诊断", use_container_width=True):
         try:
